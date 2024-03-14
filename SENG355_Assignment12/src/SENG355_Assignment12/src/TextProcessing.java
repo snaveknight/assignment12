@@ -10,9 +10,18 @@ import edu.stanford.nlp.ling.*;
 
 public class TextProcessing {
 	
-    private static Map<String, String> lemmatizationMap;
+    private Map<String, String> lemmatizationMap;
+    private Set<String> stopWords;
+    private String filePath;
 
-    private static Set<String> stopWords = new HashSet<>(Arrays.asList(
+    public TextProcessing(String filePath) {
+        this.filePath = filePath;
+        initializeStopWords();
+        initializeLemmatizationMap();
+    }
+
+    private void initializeStopWords() {
+    	 stopWords = new HashSet<>(Arrays.asList(
     	    "i", "me", "my", "myself", "we", "our", "ours", "ourselves", "you", "your", "yours", "yourself", "yourselves",
     	    "he", "him", "his", "himself", "she", "her", "hers", "herself", "it", "its", "itself", "they", "them", "their",
     	    "theirs", "themselves", "what", "which", "who", "whom", "this", "that", "these", "those", "am", "is", "are", "was",
@@ -23,8 +32,11 @@ public class TextProcessing {
     	    "both", "each", "few", "more", "most", "other", "some", "such", "no", "nor", "not", "only", "own", "same", "so",
     	    "than", "too", "very", "s", "t", "can", "will", "just", "don", "should", "now"
     	));
+    }
     
-    static {
+    private void initializeLemmatizationMap() {
+        lemmatizationMap = new HashMap<>();
+       
         // Verbs
     	lemmatizationMap = new HashMap<>();
         lemmatizationMap.put("running", "run");
@@ -61,13 +73,7 @@ public class TextProcessing {
         lemmatizationMap.put("geese", "goose");
     }
 
-    public static void main(String[] args) {
-        String filePath = "C:\\Users\\snave\\eclipse-FerrisSpring2024\\SENG355_Assignment12\\src\\SENG355_Assignment12\\src\\longText"; // Path to the text file
-
-        Properties props = new Properties();
-        props.setProperty("annotators", "tokenize,ssplit,pos");
-        StanfordCoreNLP pipeline = new StanfordCoreNLP(props);
-
+    public void processText() {
         try {
             String content = new String(Files.readAllBytes(Paths.get(filePath)), StandardCharsets.UTF_8);
             List<String> sentences = segmentSentences(content);
@@ -75,35 +81,43 @@ public class TextProcessing {
             for (String sentence : sentences) {
                 System.out.println("Sentence: " + sentence);
                 List<String> tokens = tokenizeSentence(sentence);
-                List<String> lemmatizedTokens = new ArrayList<>();
-                List<String> removedTokens = new ArrayList<>();
+                List<String> lemmatizedTokens = lemmatizeTokens(tokens);
+                List<String> filteredTokens = removeStopWords(lemmatizedTokens);
 
-                for (String token : tokens) {
-                    String lemma = lemmatize(token.toLowerCase()); 
-                    if (!stopWords.contains(lemma)) {
-                        lemmatizedTokens.add(lemma);
-                    } else {
-                        removedTokens.add(token);
-                    }
-                }
-
-                System.out.println("Tokens (lemmatized, non-stop words): " + lemmatizedTokens);
-                System.out.println("Removed Tokens (stop words): " + removedTokens);
-                System.out.println(); 
+                System.out.println("Tokens (lemmatized, non-stop words): " + filteredTokens);
+                System.out.println();
             }
         } catch (IOException e) {
             System.out.println("Error reading file: " + e.getMessage());
         }
     }
-    
-    private static String lemmatize(String token) {
-        return lemmatizationMap.getOrDefault(token, token); 
+
+    private List<String> lemmatizeTokens(List<String> tokens) {
+        List<String> lemmatizedTokens = new ArrayList<>();
+        for (String token : tokens) {
+            String lemma = lemmatize(token.toLowerCase());
+            lemmatizedTokens.add(lemma);
+        }
+        return lemmatizedTokens;
     }
 
-    
-    private static List<String> segmentSentences(String text) {
+    private List<String> removeStopWords(List<String> tokens) {
+        List<String> filteredTokens = new ArrayList<>();
+        for (String token : tokens) {
+            if (!stopWords.contains(token)) {
+                filteredTokens.add(token);
+            }
+        }
+        return filteredTokens;
+    }
+
+    private String lemmatize(String token) {
+        return lemmatizationMap.getOrDefault(token, token);
+    }
+
+    private List<String> segmentSentences(String text) {
         List<String> sentences = new ArrayList<>();
-        Pattern pattern = Pattern.compile("[^.!?]+"); 
+        Pattern pattern = Pattern.compile("[^.!?]+");
         Matcher matcher = pattern.matcher(text);
         while (matcher.find()) {
             sentences.add(matcher.group().trim());
@@ -111,14 +125,18 @@ public class TextProcessing {
         return sentences;
     }
 
-    
-    private static List<String> tokenizeSentence(String sentence) {
+    private List<String> tokenizeSentence(String sentence) {
         List<String> tokens = new ArrayList<>();
-        Pattern pattern = Pattern.compile("\\b\\w+\\b"); 
+        Pattern pattern = Pattern.compile("\\b\\w+\\b");
         Matcher matcher = pattern.matcher(sentence);
         while (matcher.find()) {
             tokens.add(matcher.group());
         }
         return tokens;
+    }
+
+    public static void main(String[] args) {
+        TextProcessing processor = new TextProcessing("your_file_path_here");
+        processor.processText();
     }
 }
